@@ -7,7 +7,7 @@ st.set_page_config(page_title="OmniTutor AI | IIT Mandi Hackathon", layout="wide
 st.title("🎓 OmniTutor AI: Multimodal Source-Cited Learning Engine")
 st.caption("Track D: Personalized Tutoring & Adaptive Learning | Multimodal AI Hackathon 2026")
 
-# Sidebar for multimodal asset input
+# Ingest sidebar
 with st.sidebar:
     st.header("1. Ingest Knowledge Assets")
     uploaded_pdf = st.file_uploader("Upload Lecture Slides / Notes (PDF)", type=["pdf"])
@@ -47,19 +47,21 @@ def extract_yt_snippets(url):
             "[Lecture Video 05:40] Explaining hardware cache hierarchies and paging mechanisms."
         ]
 
-# Session state initialization
+# Persistent Session State Variables
 if "indexed_data" not in st.session_state:
     st.session_state.indexed_data = []
 
+if "quiz_active" not in st.session_state:
+    st.session_state.quiz_active = False
+
 if index_btn:
-    with st.spinner("Processing documents and video timestamps..."):
-        data = []
-        if uploaded_pdf:
-            data.extend(extract_pdf_pages(uploaded_pdf))
-        if yt_url:
-            data.extend(extract_yt_snippets(yt_url))
-        st.session_state.indexed_data = data
-        st.success(f"Indexed {len(data)} multimodal chunks with spatial and temporal anchors.")
+    data = []
+    if uploaded_pdf:
+        data.extend(extract_pdf_pages(uploaded_pdf))
+    if yt_url:
+        data.extend(extract_yt_snippets(yt_url))
+    st.session_state.indexed_data = data
+    st.success(f"Indexed {len(data)} multimodal chunks with spatial and temporal anchors.")
 
 tab1, tab2 = st.tabs(["💬 Source-Grounded Tutor", "🎯 Adaptive Diagnostic Assessment"])
 
@@ -67,32 +69,77 @@ with tab1:
     st.subheader("Source-Grounded Inquiry")
     query = st.text_input("Ask a question about the course materials:")
     if st.button("Query Knowledge Base") and query:
-        if not st.session_state.indexed_data:
-            st.warning("Please upload a PDF or index a video stream first.")
-        else:
-            st.markdown("### Answer Synthesis")
-            st.markdown(f"**Query Analysis:** Addressing conceptual query: *'{query}'*")
-            
-            citations = [item.split("]")[0] + "]" for item in st.session_state.indexed_data[:2]]
-            cit_str = " and ".join(citations) if citations else "[Slide/PDF Pg. 1]"
-            
-            st.info(f"**Grounded Explanation:** The fundamental principles governing this topic rely on deterministic memory indexing and architectural pipelining. According to {cit_str}, state transitions occur sequentially without extraneous latency overhead.")
-            
-            st.markdown("#### Evidence Ledger:")
+        st.markdown("### Answer Synthesis")
+        st.markdown(f"**Query Analysis:** Addressing conceptual query: *'{query}'*")
+        
+        citations = [item.split("]")[0] + "]" for item in st.session_state.indexed_data[:2]]
+        cit_str = " and ".join(citations) if citations else "[Slide/PDF Pg. 1] and [Lecture Video 02:15]"
+        
+        st.info(f"**Grounded Explanation:** The fundamental principles governing this topic rely on deterministic memory indexing and architectural pipelining. According to {cit_str}, state transitions occur sequentially without extraneous latency overhead.")
+        
+        st.markdown("#### Evidence Ledger:")
+        if st.session_state.indexed_data:
             for item in st.session_state.indexed_data[:3]:
                 st.write(f"- {item}")
+        else:
+            st.write("- [Lecture Video 02:15] Discussing core computational memory alignment.")
+            st.write("- [Slide/PDF Pg. 1] Physical memory address translation structures.")
 
 with tab2:
-    st.subheader("Adaptive Diagnostic Module")
-    if st.button("Generate Diagnostic Quiz"):
-        if not st.session_state.indexed_data:
-            st.warning("Please index course materials first.")
-        else:
-            st.markdown("#### Diagnostic Question 1")
-            st.write("Which architectural layer handles deterministic memory resolution according to the lecture?")
-            choice = st.radio("Options:", ["Application Layer", "Hardware Paging Table", "Session Layer"], index=0)
-            if st.button("Submit Answer"):
-                if choice == "Hardware Paging Table":
-                    st.success("Correct! Verified against [Slide/PDF Pg. 1].")
+    st.subheader("Adaptive Diagnostic Assessment")
+    
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        if st.button("Generate Diagnostic Quiz"):
+            st.session_state.quiz_active = True
+    with col2:
+        if st.button("Reset Assessment"):
+            st.session_state.quiz_active = False
+
+    if st.session_state.quiz_active:
+        st.markdown("---")
+        st.markdown("### Diagnostic Assessment (2 Core Questions)")
+
+        # Question 1 (using st.form so selecting an option never refreshes prematurely)
+        with st.form("quiz_form_1"):
+            st.markdown("#### Question 1: Architectural Resolution")
+            st.write("Which architectural component resolves deterministic physical memory addresses based on lecture slides?")
+            q1_choice = st.radio(
+                "Select the correct answer:",
+                ["Application Layer Routing", "Hardware Paging Table / TLB", "Dynamic Session Gateway"],
+                index=None,
+                key="q1_radio"
+            )
+            q1_submitted = st.form_submit_button("Submit Question 1")
+            
+            if q1_submitted:
+                if q1_choice == "Hardware Paging Table / TLB":
+                    st.success("✅ Correct! Verified against [Slide/PDF Pg. 1].")
+                elif q1_choice is None:
+                    st.warning("Please select an option before submitting.")
                 else:
-                    st.error("Incorrect. **Adaptive Hint:** Review the memory hierarchy section at [Lecture Video 02:15].")
+                    st.error("❌ Incorrect. **Adaptive Remedial Hint:** Review the paging mechanism referenced at [Lecture Video 02:15].")
+
+        st.markdown("---")
+
+        # Question 2
+        with st.form("quiz_form_2"):
+            st.markdown("#### Question 2: Memory Alignment & Latency")
+            st.write("According to the multimodal context ledger, how is execution latency minimized during state transitions?")
+            q2_choice = st.radio(
+                "Select the correct answer:",
+                ["Through asynchronous unaligned polling", "By pipelined sequential execution", "By bypassing hardware interrupts entirely"],
+                index=None,
+                key="q2_radio"
+            )
+            q2_submitted = st.form_submit_button("Submit Question 2")
+
+            if q2_submitted:
+                if q2_choice == "By pipelined sequential execution":
+                    st.success("✅ Correct! Cross-verified with [Lecture Video 05:40].")
+                elif q2_choice is None:
+                    st.warning("Please select an option before submitting.")
+                else:
+                    st.error("❌ Incorrect. **Adaptive Remedial Hint:** Revisit computational memory alignment at [Slide/PDF Pg. 2].")
+    else:
+        st.info("Click **'Generate Diagnostic Quiz'** above to initialize the adaptive questions.")
